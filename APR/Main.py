@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request,redirect
+from flask import Flask, render_template, request,redirect,abort,url_for
 import os
 import sqlite3
 from flask import jsonify
@@ -8,6 +8,16 @@ app = Flask(__name__)
 db_filename = 'inventory.db'
 db_path = os.path.join(os.getcwd(), db_filename)
 
+@app.route('/', methods=['GET'])
+def home():
+    # Connect to the database and fetch all products
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute('SELECT * FROM products')
+    products = cursor.fetchall()
+    conn.close()
+
+    # Render the home template with the list of products
+    return render_template('home.html', products=products)
 
 
 # If the database file doesn't exist, create it and the products table
@@ -59,6 +69,21 @@ def add_product():
     # If the request is not a POST request, render the add product form
     return render_template('add_product.html')
 
+@app.route('/delete_product/<int:id>', methods=['POST'])
+def delete_product(id):
+    # Connect to the database
+    conn = sqlite3.connect(db_path)
+
+    # Delete the product with the given id from the products table
+    conn.execute('DELETE FROM products WHERE id = ?', (id,))
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+    # Redirect to the products list page
+    return redirect('/products')
+
 # Define a route for deleting a product
 @app.route('/products')
 def products():
@@ -70,6 +95,40 @@ def products():
 
     # Render the products list template with the list of products
     return render_template('products.html', products=products)
+
+@app.route('/modify_product/<int:id>', methods=['GET', 'POST'])
+def modify_product(id):
+    # Connect to the database and get the product with the given id
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM products WHERE id = ?', (id,))
+    product = cursor.fetchone()
+    conn.close()
+
+    if product is None:
+        # If no product was found with the given id, return a 404 error
+        return abort(404)
+
+    if request.method == 'POST':
+        # Get the form data from the request
+        name = request.form['name']
+        category = request.form['category']
+        price = request.form['price']
+        quantity = request.form['quantity']
+
+        # Connect to the database and update the product with the new data
+        conn = sqlite3.connect(db_path)
+        conn.execute('UPDATE products SET name = ?, category = ?, price = ?, quantity = ? WHERE id = ?',
+                     (name, category, price, quantity, id))
+        conn.commit()
+        conn.close()
+
+        # Redirect to the products list page
+        return redirect('/products')
+
+    # If the request is not a POST request, render the modify product form with the product's current data
+    return render_template('modify_product.html', product=product)
+
 
 @app.route('/api/sale/<int:id>/<int:quantity>', methods=['PUT'])
 def api_sale(id, quantity):
@@ -86,6 +145,27 @@ def api_sale(id, quantity):
     # Return a JSON response indicating the new quantity of the product
     return jsonify({'id': id, 'quantity': new_quantity})
     
+@app.route('/api/info/<int:id>', methods=['GET'])
+def api_get_product(id):
+    # Connect to the database and get the product with the given id
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM products WHERE id = ?', (id,))
+    product = cursor.fetchone()
+    conn.close()
+
+    if product is None:
+        # If no product was found with the given id, return a 404 error
+        return abort(404)
+
+    # Return a JSON response containing the product information
+    return jsonify({
+        'id': product[0],
+        'name': product[1],
+        'category': product[2],
+        'price': product[3],
+        'quantity': product[4]
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)
