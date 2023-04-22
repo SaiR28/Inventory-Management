@@ -1,0 +1,44 @@
+<!-- products.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Products</title>
+  </head>
+  <body>
+    <h1>Products</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Quantity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in products %}
+        <tr>
+          <td>{{ product[0] }}</td>
+          <td>{{ product[1] }}</td>
+          <td>{{ product[2] }}</td>
+          <td>{{ product[3] }}</td>
+          <td>{{ product[4] }}</td>
+        </tr>
+        {% endfor %}
+        {% if not products %}
+        <tr>
+          <td colspan="5">No products found.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    {% if products %}
+    <p>Number of products: {{ products|length }}</p>
+    {% endif %}
+    <!-- add these lines to check the product data -->
+    {% for product in products %}
+    <p>{{ product }}</p>
+    {% endfor %}
+  </body>
+</html>
